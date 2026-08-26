@@ -48,7 +48,7 @@ A production-grade, full-stack QR code analytics and redirection engine built wi
 
 ## 📂 Project Structure
 
-\`\`\`text
+```text
 AURASCAN/
 ├── .env                  # Environment variables (database URL, port, etc.)
 ├── .gitignore            # Git exclusion rules (node_modules, .env)
@@ -64,7 +64,6 @@ AURASCAN/
     ├── utils/            # Helper scripts
     ├── workers/          # Asynchronous telemetry enqueuers
     └── server.js         # Main application entry point
-\`\`\`
 
 ---
 
