@@ -11,8 +11,14 @@ A production-grade, full-stack QR code analytics and redirection engine built wi
 
 ## 📸 See It In Action
 
+**The Dynamic Web Interface:**
+![AuraScan Demo](./assets/quote.png)
 
+**Database Telemetry Logs:**
+![Database Logs](./assets/db.png)
 
+**Dashboard:**
+![Dashboard](./assets/dashboard.png)
 ---
 
 ## 📑 Table of Contents
