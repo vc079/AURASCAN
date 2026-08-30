@@ -6,7 +6,13 @@ const { sanitizeCsvValues } = require("../utils/csv.utils");
 // Express hands back a string, an array (?limit=1&limit=2) or an object (?limit[a]=1).
 // parseInt would turn '10abc' into 10, so match the whole string before converting.
 function parseIntParam(raw, { name, defaultValue, min, max }) {
-    if (raw === undefined || raw === '') return defaultValue;
+    if (raw === undefined) return defaultValue;
+
+    if (raw === '') {
+        const err = new Error(`Invalid '${name}': must be an integer between ${min} and ${max}`);
+        err.status = 400;
+        throw err;
+    }
 
     if (typeof raw !== 'string' || !/^\d+$/.test(raw)) {
         const err = new Error(`Invalid '${name}': must be an integer between ${min} and ${max}`);
@@ -65,7 +71,7 @@ async function exportLogsCsv(req, res, next) {
         const csvStream = format({ headers: columns, alwaysWriteHeaders: true, rowDelimiter: '\r\n' })
             .transform((row) => columns.map((c) => sanitizeCsvValues(row[c])));
 
-        stream.on('error', (err) => {
+        const onStreamError = (err) => {
             console.error(`[Export] stream failed for request ${req.requestId}:`, err.message);
             release(err);
             // Past the first byte the status is already sent, so destroy the response
@@ -75,7 +81,9 @@ async function exportLogsCsv(req, res, next) {
             } else {
                 next(err);
             }
-        });
+        };
+        stream.on('error', onStreamError);
+        csvStream.on('error', onStreamError);
         csvStream.on('end', release);
 
         stream.pipe(csvStream).pipe(res);
