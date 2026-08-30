@@ -60,6 +60,7 @@ AURASCAN/
 ├── .gitignore            # Git exclusion rules (node_modules, .env)
 ├── package.json          # Project metadata and dependency manifest
 ├── README.md             # Project documentation
+├── database/             # SQL schema (source of truth) and seed data
 └── src/                  # Source code root
     ├── config/           # Configuration files (database connection pools)
     ├── controllers/      # Request handlers (redirect, inspire)
@@ -70,6 +71,7 @@ AURASCAN/
     ├── utils/            # Helper scripts
     ├── workers/          # Asynchronous telemetry enqueuers
     └── server.js         # Main application entry point
+```
 
 ---
 
@@ -87,46 +89,37 @@ Before you begin, ensure you have the following installed on your local machine:
 
 ### 1. Clone & Install Dependencies
 Open your terminal and install the required Node modules:
-\`\`\`bash
+```bash
 git clone https://github.com/yourusername/AURASCAN.git
 cd AURASCAN
 npm install
-\`\`\`
+```
 
 ### 2. Configure Environment Variables
-Create a `.env` file in the root directory and add your configurations (do not commit this file):
-\`\`\`env
+Copy `.env.example` to `.env` and fill in your values (do not commit `.env`):
+```env
 PORT=3000
 DATABASE_URL=postgres://postgres:your_password@localhost:5432/inspiro_db
 ALLOWED_HOSTS=localhost,your-tunnel-url.loca.lt
-\`\`\`
+
+# Required by GET /api/export/logs. Generate with: openssl rand -hex 32
+ADMIN_API_KEY=your_long_random_admin_key
+```
 
 ### 3. Setup PostgreSQL Database
-Open your PostgreSQL shell and run the following commands to create the database and table:
-\`\`\`sql
-CREATE DATABASE inspiro_db;
-\c inspiro_db
-
-CREATE TABLE scan_logs (
-    id SERIAL PRIMARY KEY,
-    ip_address VARCHAR(45),
-    user_agent TEXT,
-    os VARCHAR(50),
-    browser VARCHAR(50),
-    device_type VARCHAR(50),
-    city VARCHAR(100),
-    country VARCHAR(100),
-    isp VARCHAR(100),
-    request_path VARCHAR(255),
-    scanned_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-);
-\`\`\`
+Create the database, then apply the schema and seed data. `database/schema.sql` is the
+single source of truth for the table definitions — do not hand-write them:
+```bash
+createdb inspiro_db
+psql -d inspiro_db -f database/schema.sql
+psql -d inspiro_db -f database/seeds/quotes.sql
+```
 
 ### 4. Run the Application
 Start your backend server locally:
-\`\`\`bash
+```bash
 node src/server.js
-\`\`\`
+```
 *The server is now running on `http://localhost:3000`.*
 
 ---
@@ -136,14 +129,14 @@ node src/server.js
 To test scanning the QR code with a mobile device, expose your local server to the public internet using a separate terminal tab:
 
 **LocalTunnel (No installation required):**
-\`\`\`bash
+```bash
 npx localtunnel --port 3000
-\`\`\`
+```
 
 **Pinggy (SSH-based):**
-\`\`\`bash
+```bash
 ssh -p 443 -R0:localhost:3000 a.pinggy.io
-\`\`\`
+```
 *(Remember to update the `ALLOWED_HOSTS` array in your `.env` file with the generated URL and restart the server!)*
 
 ---
@@ -152,12 +145,51 @@ ssh -p 443 -R0:localhost:3000 a.pinggy.io
 
 View your most recent telemetry logs directly in PostgreSQL:
 
-\`\`\`sql
+```sql
 SELECT ip_address, city, os, browser, isp, scanned_at 
 FROM scan_logs 
 ORDER BY scanned_at DESC 
 LIMIT 5;
-\`\`\`
+```
+
+---
+
+## 📤 Exporting Telemetry Logs as CSV
+
+`GET /api/export/logs` streams the contents of `scan_logs` back as a downloadable
+`.csv`, newest first, for analysis in Excel, Google Sheets, or pandas.
+
+**Authentication** — required. Send the value of `ADMIN_API_KEY` (from your `.env`)
+in an `x-api-key` header. Requests without a valid key get `401`; if `ADMIN_API_KEY`
+is not configured at all the endpoint fails closed with `503` rather than serving
+data. The route also sits behind the shared rate limiter (100 requests / 15 min per IP).
+
+**Query parameters**
+
+| Param | Default | Range | Description |
+|---|---|---|---|
+| `limit` | `1000` | `1`–`EXPORT_MAX_LIMIT` (default `50000`) | Maximum rows to export. |
+| `days`  | *(none)* | `1`–`3650` | Only include scans from the last N days. |
+
+Both must be plain integers; anything else returns `400`.
+
+```bash
+# All defaults (most recent 1000 rows)
+curl -H "x-api-key: $ADMIN_API_KEY" \
+  -OJ http://localhost:3000/api/export/logs
+
+# Last 7 days, up to 500 rows
+curl -H "x-api-key: $ADMIN_API_KEY" \
+  "http://localhost:3000/api/export/logs?days=7&limit=500" -o recent.csv
+```
+
+Columns are read from the live `scan_logs` table at request time, so the export
+tracks the schema automatically rather than relying on a hardcoded list.
+
+> **Note on leading apostrophes:** fields whose value begins with `=`, `+`, `-`, or
+> `@` are prefixed with a single quote (`'`). `user_agent`, `referer`, and `isp` are
+> attacker-controlled, and spreadsheet software executes cells starting with those
+> characters. This is a deliberate safety measure, not corrupted data.
 
 ---
 

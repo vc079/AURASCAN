@@ -9,6 +9,7 @@ const qrRoutes = require('./routes/qr.routes');
 const inspireRoutes = require('./routes/inspire.routes');
 const redirectRoutes = require('./routes/redirect.routes');
 const dashboardRoutes = require('./routes/dashboard.routes'); // <-- New Dashboard Route
+const apiRoutes = require('./routes/api.routes.js');
 
 const app = express();
 
@@ -20,6 +21,7 @@ app.use('/generate', apiLimiter, qrRoutes);
 app.use('/inspire', apiLimiter, inspireRoutes);
 app.use('/r', apiLimiter, redirectRoutes);
 app.use('/dashboard', dashboardRoutes); // <-- Mount the dashboard at /dashboard
+app.use('/api', apiLimiter, apiRoutes);
 
 app.use(errorHandler);
 
