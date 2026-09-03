@@ -10,5 +10,8 @@ module.exports = {
     ALLOWED_HOST: process.env.ALLOWED_HOST || 'localhost:3000',
     ENFORCE_ALLOWLIST: process.env.ENFORCE_ALLOWLIST === 'true',
     GEOIP_TIMEOUT_MS: parseInt(process.env.GEOIP_TIMEOUT_MS || '2500', 10),
-    TRUST_PROXY_HOPS: parseInt(process.env.TRUST_PROXY_HOPS || '1', 10)
+    TRUST_PROXY_HOPS: parseInt(process.env.TRUST_PROXY_HOPS || '1', 10),
+    ADMIN_API_KEY: process.env.ADMIN_API_KEY || null,
+    EXPORT_DEFAULT_LIMIT: parseInt(process.env.EXPORT_DEFAULT_LIMIT || '1000', 10),
+    EXPORT_MAX_LIMIT: parseInt(process.env.EXPORT_MAX_LIMIT || '1000', 10),
 };
